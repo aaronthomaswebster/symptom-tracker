@@ -101,9 +101,8 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useTheme } from 'vuetify';
-import { useAuth } from '../composables/useAuth';
+import { supabase } from '../lib/supabase';
 
-const { apiFetch } = useAuth();
 const theme = useTheme();
 const isDark = computed(() => theme.global.current.value.dark);
 
@@ -277,13 +276,14 @@ const severitySeries = computed(() => {
   }));
 });
 
-async function fetchReport(endpoint, target) {
+async function fetchReport(fnName, target) {
   loadingCount.value++;
   try {
-    const res = await apiFetch(`/api/reports/${endpoint}?days=${days.value}`);
-    target.value = await res.json();
+    const { data, error } = await supabase.rpc(fnName, { p_days: days.value });
+    if (error) throw error;
+    target.value = data;
   } catch (e) {
-    console.error(`Failed to load ${endpoint}:`, e);
+    console.error(`Failed to load ${fnName}:`, e);
     target.value = [];
   } finally {
     loadingCount.value--;
@@ -291,11 +291,11 @@ async function fetchReport(endpoint, target) {
 }
 
 function loadAll() {
-  fetchReport('frequency', frequencyData);
-  fetchReport('timeline', timelineData);
-  fetchReport('severity', severityData);
-  fetchReport('hourly', hourlyData);
-  fetchReport('daily-total', dailyTotalData);
+  fetchReport('report_frequency', frequencyData);
+  fetchReport('report_timeline', timelineData);
+  fetchReport('report_severity', severityData);
+  fetchReport('report_hourly', hourlyData);
+  fetchReport('report_daily_total', dailyTotalData);
 }
 
 watch(days, loadAll, { immediate: true });

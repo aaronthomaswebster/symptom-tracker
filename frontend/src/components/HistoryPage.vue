@@ -30,10 +30,10 @@
                 :key="log.id"
               >
                 <template v-slot:prepend>
-                  <span class="emoji-small mr-3">{{ log.emoji }}</span>
+                  <span class="emoji-small mr-3">{{ log.symptoms.emoji }}</span>
                 </template>
                 <v-list-item-title class="font-weight-medium">
-                  {{ log.symptom_name }}
+                  {{ log.symptoms.name }}
                   <v-chip
                     v-if="log.severity"
                     size="x-small"
@@ -78,11 +78,9 @@
 
 <script setup>
 import { ref, watch } from 'vue';
-import { useAuth } from '../composables/useAuth';
+import { supabase } from '../lib/supabase';
 
 const PAGE_SIZE = 30;
-
-const { apiFetch } = useAuth();
 
 const logs = ref([]);
 const loading = ref(true);
@@ -103,8 +101,12 @@ function formatDate(iso) {
 }
 
 async function fetchLogs(offset = 0) {
-  const res = await apiFetch(`/api/logs?limit=${PAGE_SIZE + 1}&offset=${offset}`);
-  const data = await res.json();
+  const { data, error } = await supabase
+    .from('symptom_logs')
+    .select('*, symptoms(name, emoji)')
+    .order('occurred_at', { ascending: false })
+    .range(offset, offset + PAGE_SIZE);
+  if (error) throw error;
   const more = data.length > PAGE_SIZE;
   return { rows: data.slice(0, PAGE_SIZE), more };
 }
@@ -137,7 +139,8 @@ async function loadMore() {
 
 async function deleteLog(id) {
   try {
-    await apiFetch(`/api/logs/${id}`, { method: 'DELETE' });
+    const { error } = await supabase.from('symptom_logs').delete().eq('id', id);
+    if (error) throw error;
     logs.value = logs.value.filter(l => l.id !== id);
   } catch (e) {
     console.error('Failed to delete log:', e);

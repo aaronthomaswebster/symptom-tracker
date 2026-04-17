@@ -1,73 +1,71 @@
 # Symptom Tracker
 
-A health symptom tracker for logging occurrences of symptoms like fatigue, dizziness, nausea, and more. Built with Vue 3, Vuetify, Node.js/Express, and PostgreSQL — containerized with Podman.
+A health symptom tracker for logging occurrences of symptoms like fatigue, dizziness, nausea, and more. Built with Vue 3, Vuetify, and Supabase.
 
 ## Prerequisites
 
-- [Podman](https://podman.io/) with `podman compose` support
-- A running Podman machine (`podman machine init && podman machine start`)
+- [Node.js](https://nodejs.org/) (v18+)
+- A [Supabase](https://supabase.com/) project
 
-## Quick Start (Development)
+## Setup
+
+### 1. Create a Supabase Project
+
+1. Go to [supabase.com](https://supabase.com/) and create a new project
+2. In the **SQL Editor**, run the contents of `supabase-schema.sql` to create the tables, RLS policies, triggers, and functions
+3. Under **Authentication → Settings**, you may want to disable "Confirm email" for development convenience
+
+### 2. Configure Environment Variables
+
+Copy `.env.example` to `frontend/.env`:
 
 ```bash
-./scripts/dev.sh
+cp .env.example frontend/.env
 ```
 
-This starts all services with hot-reload:
+Fill in your Supabase project URL and anon key (found in **Settings → API**):
 
-- **Frontend:** http://localhost:5173
-- **API:** http://localhost:3000
-- **Database:** localhost:5432
+```
+VITE_SUPABASE_URL=https://your-project.supabase.co
+VITE_SUPABASE_ANON_KEY=your-anon-key
+```
 
-Source files are mounted as volumes so changes are reflected immediately.
+### 3. Install & Run
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The app will be available at **http://localhost:5173**
 
 ## Production Build
 
 ```bash
-./scripts/prod.sh
+cd frontend
+npm run build
 ```
 
-Builds optimized images and runs in detached mode:
-
-- **Frontend (nginx):** http://localhost
-- **API:** http://localhost:3000
-
-## Scripts
-
-| Script | Description |
-|---|---|
-| `./scripts/dev.sh` | Start dev environment with hot-reload |
-| `./scripts/dev-down.sh` | Stop dev environment |
-| `./scripts/prod.sh` | Build and start production |
-| `./scripts/prod-down.sh` | Stop production |
-| `./scripts/reset-db.sh` | Wipe and re-seed the database |
+The built files in `frontend/dist/` can be deployed to any static hosting service (Vercel, Netlify, Cloudflare Pages, etc.).
 
 ## Architecture
 
 ```
 symptom-tracker/
-├── backend/          # Node.js/Express API
-│   └── src/
-│       ├── config/   # Database connection
-│       ├── migrations/  # Schema + seed data
-│       ├── models/   # Data access layer
-│       └── routes/   # REST endpoints
-├── frontend/         # Vue 3 + Vuetify SPA
-│   └── src/
-│       └── components/
-├── scripts/          # Build & dev scripts
-├── docker-compose.yml      # Production
-└── docker-compose.dev.yml  # Development
+├── supabase-schema.sql   # Database schema, RLS policies, triggers, functions
+├── .env.example          # Environment variable template
+└── frontend/             # Vue 3 + Vuetify SPA
+    └── src/
+        ├── lib/          # Supabase client
+        ├── composables/  # Auth composable
+        └── components/   # UI components
 ```
 
-## API Endpoints
+## Database Schema
 
-| Method | Endpoint | Description |
-|---|---|---|
-| GET | `/api/symptoms` | List all symptom types |
-| GET | `/api/symptoms/:id` | Get a symptom type |
-| GET | `/api/logs` | List logged symptoms (supports `?limit=&offset=&symptom_id=`) |
-| GET | `/api/logs/:id` | Get a specific log |
-| POST | `/api/logs` | Create a new log |
-| DELETE | `/api/logs/:id` | Delete a log |
-| GET | `/api/health` | Health check |
+- **default_symptoms** — Seed data copied to each new user on signup
+- **symptoms** — User symptom types (name, emoji, display order, archived state)
+- **symptom_logs** — Individual symptom occurrences with severity, activity, and notes
+
+Row Level Security (RLS) ensures each user can only access their own data. Report data is computed via PostgreSQL functions called through Supabase RPC.

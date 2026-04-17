@@ -9,7 +9,7 @@
         </v-app-bar-title>
         <template v-slot:append>
           <span class="text-body-2 text-medium-emphasis mr-2 d-none d-sm-inline">
-            {{ user?.username }}
+            {{ user?.email }}
           </span>
           <v-btn icon @click="toggleTheme">
             <v-icon>{{ isDark ? 'mdi-weather-sunny' : 'mdi-weather-night' }}</v-icon>
@@ -111,6 +111,7 @@
 import { ref, watch, computed } from 'vue';
 import { useTheme } from 'vuetify';
 import { useAuth } from './composables/useAuth';
+import { supabase } from './lib/supabase';
 import LogSymptomDialog from './components/LogSymptomDialog.vue';
 import ManageSymptomsDialog from './components/ManageSymptomsDialog.vue';
 import HistoryPage from './components/HistoryPage.vue';
@@ -123,7 +124,7 @@ const toggleTheme = () => {
   theme.global.name.value = isDark.value ? 'light' : 'dark';
 };
 
-const { isAuthenticated, user, logout, apiFetch } = useAuth();
+const { isAuthenticated, user, logout } = useAuth();
 
 const currentPage = ref('home');
 const symptoms = ref([]);
@@ -143,8 +144,14 @@ function openLog(symptom) {
 
 async function fetchSymptoms() {
   try {
-    const res = await apiFetch('/api/symptoms');
-    symptoms.value = await res.json();
+    const { data, error } = await supabase
+      .from('symptoms')
+      .select('*')
+      .eq('archived', false)
+      .order('display_order')
+      .order('id');
+    if (error) throw error;
+    symptoms.value = data;
   } catch (e) {
     console.error('Failed to load symptoms:', e);
   } finally {

@@ -15,13 +15,13 @@
           <v-card-text class="px-6 pt-6">
             <v-form @submit.prevent="submit" ref="formRef">
               <v-text-field
-                v-model="form.username"
-                label="Username"
+                v-model="form.email"
+                label="Email"
                 variant="outlined"
                 rounded="lg"
                 density="comfortable"
-                prepend-inner-icon="mdi-account-outline"
-                :rules="[rules.required]"
+                prepend-inner-icon="mdi-email-outline"
+                :rules="[rules.required, rules.email]"
                 autofocus
               />
 
@@ -49,6 +49,17 @@
                 :type="showPassword ? 'text' : 'password'"
                 :rules="[rules.required, rules.passwordMatch]"
               />
+
+              <v-alert
+                v-if="success"
+                type="success"
+                variant="tonal"
+                rounded="lg"
+                class="mb-4"
+                density="compact"
+              >
+                {{ success }}
+              </v-alert>
 
               <v-alert
                 v-if="error"
@@ -105,16 +116,18 @@ const isRegistering = ref(false);
 const showPassword = ref(false);
 const loading = ref(false);
 const error = ref('');
+const success = ref('');
 const formRef = ref(null);
 
 const form = reactive({
-  username: '',
+  email: '',
   password: '',
   confirmPassword: '',
 });
 
 const rules = {
   required: v => !!v || 'Required',
+  email: v => /.+@.+\..+/.test(v) || 'Valid email required',
   minLength: v => (v && v.length >= 6) || 'Must be at least 6 characters',
   passwordMatch: v => v === form.password || 'Passwords do not match',
 };
@@ -122,6 +135,7 @@ const rules = {
 function toggleMode() {
   isRegistering.value = !isRegistering.value;
   error.value = '';
+  success.value = '';
   form.password = '';
   form.confirmPassword = '';
 }
@@ -132,12 +146,14 @@ async function submit() {
 
   loading.value = true;
   error.value = '';
+  success.value = '';
 
   try {
     if (isRegistering.value) {
-      await register(form.username, form.password);
+      await register(form.email, form.password);
+      success.value = 'Account created! Check your email to confirm your account.';
     } else {
-      await login(form.username, form.password);
+      await login(form.email, form.password);
     }
   } catch (e) {
     error.value = e.message;

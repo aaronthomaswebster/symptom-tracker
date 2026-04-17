@@ -98,7 +98,7 @@
 
 <script setup>
 import { ref, reactive, watch, computed } from 'vue';
-import { useAuth } from '../composables/useAuth';
+import { supabase } from '../lib/supabase';
 
 const props = defineProps({
   modelValue: Boolean,
@@ -106,7 +106,6 @@ const props = defineProps({
 });
 const emit = defineEmits(['update:modelValue', 'saved']);
 
-const { apiFetch } = useAuth();
 const saving = ref(false);
 
 const form = reactive({
@@ -152,18 +151,15 @@ async function save() {
   const occurredAt = new Date(`${form.date}T${form.time}`).toISOString();
 
   try {
-    const res = await apiFetch('/api/logs', {
-      method: 'POST',
-      body: JSON.stringify({
-        symptom_id: props.symptom.id,
-        occurred_at: occurredAt,
-        severity: form.severity,
-        activity: form.activity || null,
-        notes: form.notes || null,
-      }),
+    const { error } = await supabase.from('symptom_logs').insert({
+      symptom_id: props.symptom.id,
+      occurred_at: occurredAt,
+      severity: form.severity,
+      activity: form.activity || null,
+      notes: form.notes || null,
     });
 
-    if (!res.ok) throw new Error('Save failed');
+    if (error) throw error;
 
     emit('update:modelValue', false);
     emit('saved');

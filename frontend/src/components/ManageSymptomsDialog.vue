@@ -183,12 +183,10 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue';
-import { useAuth } from '../composables/useAuth';
+import { supabase } from '../lib/supabase';
 
 const props = defineProps({ modelValue: Boolean });
 const emit = defineEmits(['update:modelValue', 'changed']);
-
-const { apiFetch } = useAuth();
 
 const allSymptoms = ref([]);
 const tab = ref('active');
@@ -209,16 +207,16 @@ const archivedSymptoms = computed(() => allSymptoms.value.filter(s => s.archived
 
 async function loadSymptoms() {
   try {
-    const res = await apiFetch('/api/symptoms?include_archived=true');
-    const symptoms = await res.json();
-    const logChecks = await Promise.all(
-      symptoms.map(async (s) => {
-        const r = await apiFetch(`/api/logs?symptom_id=${s.id}&limit=1`);
-        const logs = await r.json();
-        return { ...s, has_logs: logs.length > 0 };
-      })
-    );
-    allSymptoms.value = logChecks;
+    const { data, error } = await supabase
+      .from('symptoms')
+      .select('*, symptom_logs(count)')
+      .order('display_order')
+      .order('id');
+    if (error) throw error;
+    allSymptoms.value = data.map(s => ({
+      ...s,
+      has_logs: s.symptom_logs?.[0]?.count > 0,
+    }));
   } catch (e) {
     console.error('Failed to load symptoms:', e);
   }
@@ -236,13 +234,15 @@ async function addSymptom() {
   if (!name) return;
   error.value = '';
   try {
-    const res = await apiFetch('/api/symptoms', {
-      method: 'POST',
-      body: JSON.stringify({ name, emoji: newEmoji.value }),
-    });
-    if (!res.ok) {
-      const data = await res.json();
-      error.value = data.error || 'Failed to add symptom';
+    const { error: err } = await supabase
+      .from('symptoms')
+      .insert({ name, emoji: newEmoji.value });
+    if (err) {
+      if (err.code === '23505') {
+        error.value = 'You already have a symptom with that name';
+      } else {
+        error.value = err.message || 'Failed to add symptom';
+      }
       return;
     }
     newName.value = '';
@@ -256,7 +256,11 @@ async function addSymptom() {
 
 async function archiveSymptom(s) {
   try {
-    await apiFetch(`/api/symptoms/${s.id}/archive`, { method: 'POST' });
+    const { error: err } = await supabase
+      .from('symptoms')
+      .update({ archived: true })
+      .eq('id', s.id);
+    if (err) throw err;
     await loadSymptoms();
     emit('changed');
   } catch (e) {
@@ -266,7 +270,11 @@ async function archiveSymptom(s) {
 
 async function unarchiveSymptom(s) {
   try {
-    await apiFetch(`/api/symptoms/${s.id}/unarchive`, { method: 'POST' });
+    const { error: err } = await supabase
+      .from('symptoms')
+      .update({ archived: false })
+      .eq('id', s.id);
+    if (err) throw err;
     await loadSymptoms();
     emit('changed');
   } catch (e) {
@@ -277,10 +285,12 @@ async function unarchiveSymptom(s) {
 async function deleteSymptom(s) {
   error.value = '';
   try {
-    const res = await apiFetch(`/api/symptoms/${s.id}`, { method: 'DELETE' });
-    if (!res.ok) {
-      const data = await res.json();
-      error.value = data.error || 'Failed to delete symptom';
+    const { error: err } = await supabase
+      .from('symptoms')
+      .delete()
+      .eq('id', s.id);
+    if (err) {
+      error.value = err.message || 'Failed to delete symptom';
       return;
     }
     await loadSymptoms();

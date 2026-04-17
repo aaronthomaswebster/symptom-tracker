@@ -1,84 +1,32 @@
 import { ref, computed } from 'vue';
+import { supabase } from '../lib/supabase';
 
-const token = ref(localStorage.getItem('token') || null);
-const user = ref(JSON.parse(localStorage.getItem('user') || 'null'));
+const session = ref(null);
+const user = computed(() => session.value?.user ?? null);
+const isAuthenticated = computed(() => !!session.value);
 
-const isAuthenticated = computed(() => !!token.value);
+supabase.auth.getSession().then(({ data: { session: s } }) => {
+  session.value = s;
+});
 
-function setSession(data) {
-  token.value = data.token;
-  user.value = data.user;
-  localStorage.setItem('token', data.token);
-  localStorage.setItem('user', JSON.stringify(data.user));
+supabase.auth.onAuthStateChange((_event, s) => {
+  session.value = s;
+});
+
+async function login(email, password) {
+  const { error } = await supabase.auth.signInWithPassword({ email, password });
+  if (error) throw error;
 }
 
-function clearSession() {
-  token.value = null;
-  user.value = null;
-  localStorage.removeItem('token');
-  localStorage.removeItem('user');
+async function register(email, password) {
+  const { error } = await supabase.auth.signUp({ email, password });
+  if (error) throw error;
 }
 
-function authHeaders() {
-  return token.value
-    ? { Authorization: `Bearer ${token.value}` }
-    : {};
-}
-
-async function apiFetch(url, options = {}) {
-  const res = await fetch(url, {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...authHeaders(),
-      ...options.headers,
-    },
-  });
-
-  if (res.status === 401) {
-    clearSession();
-    throw new Error('Session expired');
-  }
-
-  return res;
-}
-
-async function login(username, password) {
-  const res = await fetch('/api/auth/login', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Login failed');
-  setSession(data);
-  return data;
-}
-
-async function register(username, password) {
-  const res = await fetch('/api/auth/register', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ username, password }),
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.error || 'Registration failed');
-  setSession(data);
-  return data;
-}
-
-function logout() {
-  clearSession();
+async function logout() {
+  await supabase.auth.signOut();
 }
 
 export function useAuth() {
-  return {
-    token,
-    user,
-    isAuthenticated,
-    login,
-    register,
-    logout,
-    apiFetch,
-  };
+  return { session, user, isAuthenticated, login, register, logout };
 }
