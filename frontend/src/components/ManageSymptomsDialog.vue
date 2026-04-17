@@ -50,22 +50,32 @@
           </v-col>
         </v-row>
 
-        <v-dialog v-model="showPicker" max-width="360">
+        <v-dialog v-model="showPicker" max-width="420">
           <v-card rounded="xl" class="pa-4">
             <v-card-title class="text-subtitle-1 font-weight-bold pb-2">Pick an Emoji</v-card-title>
-            <v-card-text class="d-flex flex-wrap ga-1 justify-center" style="max-height: 280px; overflow-y: auto;">
-              <v-btn
-                v-for="e in emojiOptions"
-                :key="e"
-                variant="text"
-                size="large"
-                min-width="48"
-                class="emoji-option"
-                @click="newEmoji = e; showPicker = false"
-              >
-                {{ e }}
-              </v-btn>
-            </v-card-text>
+            <v-tabs v-model="emojiTab" color="primary" density="compact" center-active show-arrows class="mb-2">
+              <v-tab v-for="group in emojiGroups" :key="group.label" :value="group.label">
+                <span class="text-body-1 mr-1">{{ group.icon }}</span>
+                <span class="text-caption">{{ group.label }}</span>
+              </v-tab>
+            </v-tabs>
+            <v-window v-model="emojiTab">
+              <v-window-item v-for="group in emojiGroups" :key="group.label" :value="group.label">
+                <v-card-text class="d-flex flex-wrap ga-1 justify-center" style="max-height: 280px; overflow-y: auto;">
+                  <v-btn
+                    v-for="e in group.emojis"
+                    :key="e"
+                    variant="text"
+                    size="large"
+                    min-width="48"
+                    class="emoji-option"
+                    @click="newEmoji = e; showPicker = false"
+                  >
+                    {{ e }}
+                  </v-btn>
+                </v-card-text>
+              </v-window-item>
+            </v-window>
           </v-card>
         </v-dialog>
 
@@ -193,13 +203,82 @@ const tab = ref('active');
 const newName = ref('');
 const newEmoji = ref('😵‍💫');
 const showPicker = ref(false);
+const emojiTab = ref('Faces');
 const error = ref('');
 
-const emojiOptions = [
-  '😴','💫','🤢','🤮','😵‍💫','😩','💔','💓','🏃‍♂️','😮‍💨',
-  '🤕','🤒','💪','😰','🌫️','🤰','🗣️','🤧','🩺','🤯',
-  '😓','🥶','🥵','🫠','😖','🤥','🫁','🦴','🦷','👁️',
-  '👃','👂','🧠','❤️','🫀','🩸','💊','🩹','🌡️','😵',
+const emojiGroups = [
+  {
+    label: 'Faces',
+    icon: '😀',
+    emojis: [
+      '😀','😃','😄','😁','😆','😅','🤣','😂','🙂','😊',
+      '😇','🥰','😍','🤩','😘','😋','😛','😜','🤪','😝',
+      '🤑','🤗','🤭','🤫','🤔','🫡','🤐','🤨','😐','😑',
+      '😶','🫥','😏','😒','🙄','😬','😮‍💨','🤥','🫠','😌',
+      '😔','😪','🤤','😴','🫨',
+    ],
+  },
+  {
+    label: 'Unwell',
+    icon: '🤒',
+    emojis: [
+      '😷','🤒','🤕','🤢','🤮','🥴','😵','😵‍💫','🤯','🥱',
+      '😤','😡','🤬','😈','💀','☠️','😰','😥','😢','😭',
+      '😱','😖','😣','😞','😓','😩','😫','🥺','😿','🙀',
+      '😮‍💨','🫣','🫢','😧','😦','😨','😮','😯','😲','🥶',
+      '🥵','😳','🤧',
+    ],
+  },
+  {
+    label: 'Body',
+    icon: '👁️',
+    emojis: [
+      '👁️','👀','👅','👄','🫦','👃','👂','🦻','🦶','🦵',
+      '🦿','🦾','💪','🧠','🫀','🫁','🦴','🦷','👣','🩸',
+      '🧬','🦠',
+    ],
+  },
+  {
+    label: 'Medical',
+    icon: '🏥',
+    emojis: [
+      '💊','🩹','🩺','🩻','🩼','🩱','🌡️','💉','🧪','🧫',
+      '🧬','🔬','🏥','🚑','🩸','❤️','🧡','💛','💚','💙',
+      '💜','🖤','🤍','🤎','❤️‍🩹','❤️‍🔥','💔','💓','💗','💖',
+      '💘','💝','♿','⚕️',
+    ],
+  },
+  {
+    label: 'Hands',
+    icon: '🤲',
+    emojis: [
+      '👋','🤚','🖐️','✋','🖖','🫱','🫲','🫳','🫴','🫷',
+      '🫸','👌','🤌','🤏','✌️','🤞','🫰','🤟','🤘','🤙',
+      '👈','👉','👆','🖕','👇','☝️','🫵','👍','👎','✊',
+      '👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏',
+      '✍️','💅','🤳','💪',
+    ],
+  },
+  {
+    label: 'People',
+    icon: '🧑',
+    emojis: [
+      '👶','🧒','👦','👧','🧑','👱','👨','👩','🧔','🧓',
+      '👴','👵','🙍','🙎','🙅','🙆','💁','🙋','🧏','🙇',
+      '🤦','🤷','💆','💇','🚶','🧎','🏃','💃','🕺','🧖',
+      '🧗','🏄','🚴','🤸','🤼','🤽','🤾','🤺','⛹️','🏋️',
+      '🧘','🛀','🛌',
+    ],
+  },
+  {
+    label: 'Symbols',
+    icon: '⚡',
+    emojis: [
+      '💤','💫','💥','💦','💨','🌫️','🌀','⚡','🔥','✨',
+      '⭐','🌟','💢','❗','❓','‼️','⁉️','🚫','⛔','🆘',
+      '⚠️','🔴','🟠','🟡','🟢',
+    ],
+  },
 ];
 
 const activeSymptoms = computed(() => allSymptoms.value.filter(s => !s.archived));
